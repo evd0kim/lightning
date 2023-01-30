@@ -27,3 +27,18 @@ tokio-util = { version = "0.7", features = ["codec"] }
 [dev-dependencies]
 env_logger = "0.10"
 tokio = { version = "1", features = ["net", "macros", "rt-multi-thread"]}
+#tokio = { version = "1", features = ["full"] }
+
+#btc_test
+bitcoincore-rpc = "0.15.0"
+cln-btc-test = { path = "../cln-btc-test" }
+bitcoin_hashes = "0.10.0"
+log = "0.4.14"
+nix = "0.24.1"
+port-selector = "0.1.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempdir = "0.3.7"
+thiserror = "1.0"
+p256 ="0.11.1"
+rand_core = { version = "0.6.3", features = ["std"] }

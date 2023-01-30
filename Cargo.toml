@@ -3,6 +3,7 @@ strip = "debuginfo"
 
 [workspace]
 members = [
+  "cln-btc-test",
   "cln-rpc",
   "cln-grpc",
   "plugins",
