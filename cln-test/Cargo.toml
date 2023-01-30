@@ -1,12 +1,13 @@
 [package]
 # this module consists from code borrowed from https://github.com/hexresearch/hexstody project
-name = "cln-btc-test"
+name = "cln-test"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 bitcoin = "0.28.1"
 bitcoin_hashes = "0.10.0"
 bitcoincore-rpc = "0.15.0"
@@ -23,3 +24,5 @@ thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 p256 ="0.11.1"
 rand_core = { version = "0.6.3", features = ["std"] }
+cln-rpc = { path = "../cln-rpc" }
+cln-btc-test = { path = "../cln-btc-test" }

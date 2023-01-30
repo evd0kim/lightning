@@ -6,6 +6,7 @@ members = [
   "cln-btc-test",
   "cln-rpc",
   "cln-grpc",
+  "cln-test",
   "plugins",
   "plugins/grpc-plugin",
 ]

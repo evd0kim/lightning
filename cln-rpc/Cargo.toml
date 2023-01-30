@@ -32,6 +32,7 @@ tokio = { version = "1", features = ["net", "macros", "rt-multi-thread"]}
 #btc_test
 bitcoincore-rpc = "0.15.0"
 cln-btc-test = { path = "../cln-btc-test" }
+cln-test = { path = "../cln-test" }
 bitcoin_hashes = "0.10.0"
 log = "0.4.14"
 nix = "0.24.1"

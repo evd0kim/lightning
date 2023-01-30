@@ -380,6 +380,7 @@ dependencies = [
  "bitcoincore-rpc",
  "bytes",
  "cln-btc-test",
+ "cln-test",
  "env_logger 0.10.0",
  "futures-util",
  "hex",
@@ -394,6 +395,31 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "cln-test"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitcoin 0.28.2",
+ "bitcoin_hashes 0.10.0",
+ "bitcoincore-rpc",
+ "bitcoincore-rpc-json",
+ "cln-btc-test",
+ "cln-rpc",
+ "env_logger 0.9.3",
+ "futures",
+ "log",
+ "nix",
+ "p256",
+ "port-selector",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "tempdir",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
