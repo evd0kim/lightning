@@ -11,7 +11,7 @@ use std::time::Duration;
 use tempdir::TempDir;
 
 use cln_btc_test::runner::{setup_btc_node_ready, teardown_btc_node};
-use cln_rpc::{ClnRpc, Request};
+use cln_rpc::{ClnRpc, Request, Response};
 use cln_rpc::model::{ConnectRequest, GetinfoRequest};
 
 fn setup_cln_backend(btc_rpc_port: u16, port: u16, rpc_port: u16) -> (Child, TempDir) {
@@ -128,7 +128,7 @@ async fn setup_cln_backend_ready(
 
     info!("Using CLN backend socket {}", cln_socket.display());
     // With ClnRpc test needs some time for socket to appear in the directory
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
     let mut client = ClnRpc::new(cln_socket).await.expect("Socket created");
 
@@ -161,8 +161,7 @@ async fn setup_cln_peernode_ready(
     (node_handle, client, temp_dir)
 }
 
-/*
-pub async fn mine_and_sync(btc: &Client, block_num: u64, address: &Address, ln_nodes: Vec<&ClnRpc>) -> u64
+pub async fn mine_and_sync(btc: &Client, block_num: u64, address: &Address, ln_nodes: Vec<&mut ClnRpc>) -> u64
 {
     let _r = btc
         .generate_to_address(block_num, address)
@@ -173,19 +172,27 @@ pub async fn mine_and_sync(btc: &Client, block_num: u64, address: &Address, ln_n
     for node in ln_nodes {
         let mut proceed = true;
         while proceed {
-            let ln_info = node.getinfo().expect("LN node info");
-            if chain_info.blocks != ln_info.blockheight {
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                //debug!("Core height {}, LN {}", chain_info.blocks, ln_info.blockheight);
-            } else {
-                proceed = false;
+            let res = node
+                .call(Request::Getinfo(GetinfoRequest {}))
+                .await;
+
+            match res {
+                Ok(Response::Getinfo(r)) => {
+                    if chain_info.blocks != r.blockheight as u64 {
+                        debug!("Core height {}, LN {}. Sleeping", chain_info.blocks, r.blockheight);
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    } else {
+                        proceed = false;
+                    }
+                },
+                _ => {},
             }
         }
     }
     chain_info.blocks
 }
 
-
+/*
 pub async fn wait_for_htlc(cln: &mut ClnRpc) -> u64
 {
     // Ensures all HTLC settled
