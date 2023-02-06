@@ -4,10 +4,10 @@ use bitcoincore_rpc::bitcoin::Address;
 use std::str::FromStr;
 use bitcoin::network::address::AddrV2::Ipv4;
 use futures_util::TryFutureExt;
-use cln_rpc::model::{ConnectRequest, FundchannelRequest, GetinfoBinding, GetinfoBindingType, GetinfoRequest, ListchannelsChannels, ListchannelsRequest, ListfundsRequest, NewaddrRequest, NewaddrResponse};
+use cln_rpc::model::{ConnectRequest, CreateinvoiceRequest, FundchannelRequest, GetinfoBinding, GetinfoBindingType, GetinfoRequest, InvoiceRequest, ListchannelsChannels, ListchannelsRequest, ListfundsRequest, ListpaysRequest, NewaddrRequest, NewaddrResponse, PayRequest};
 use cln_rpc::{ClnRpc, primitives, Request, Response};
 use cln_rpc::model::NewaddrAddresstype::BECH32;
-use cln_rpc::primitives::AmountOrAll;
+use cln_rpc::primitives::{AmountOrAll, AmountOrAny};
 use cln_rpc::primitives::AmountOrAll::Amount;
 
 use cln_test::runner::*;
@@ -171,8 +171,88 @@ async fn basic_test() {
                 println!("Checking backend node channels {:?}", r.channels);
             },
             _ => {
-                println!("No channels?")
+                println!("No channels. It may be ok for Regtest")
             },
+        }
+
+        let invoice = cln_peer
+            .call(Request::Invoice(InvoiceRequest{
+                amount_msat: AmountOrAny::Amount(primitives::Amount::from_sat(500000)),
+                description: "test 1".to_string(),
+                label: "test 1".to_string(),
+                expiry: None,
+                fallbacks: None,
+                preimage: None,
+                exposeprivatechannels: None,
+                cltv: None,
+                deschashonly: None
+            }))
+            .await;
+
+        match invoice {
+            Ok(Response::Invoice(r)) => {
+                println!("Received invoice from peer node {:?}", r.bolt11.clone());
+
+                let payment = cln_back
+                    .call(Request::Pay(PayRequest{
+                        bolt11: r.bolt11.clone(),
+                        amount_msat: None,
+                        label: None,
+                        riskfactor: None,
+                        maxfeepercent: None,
+                        retry_for: None,
+                        maxdelay: None,
+                        exemptfee: None,
+                        localinvreqid: None,
+                        exclude: None,
+                        maxfee: None,
+                        description: None
+                    }))
+                    .await;
+
+                match payment {
+                    Ok(Response::Pay(r)) => {
+                        println!("Received on PayRequest {:?}", r);
+                    },
+                    _ => {
+                        println!("No pay status?")
+                    },
+                }
+
+                let status = cln_back
+                    .call(Request::ListPays(ListpaysRequest{
+                        bolt11: Some(r.bolt11),
+                        payment_hash: None,
+                        status: None
+                    }))
+                    .await;
+
+                match status {
+                    Ok(Response::ListPays(r)) => {
+                        println!("ListPays {:?}", r.pays);
+                    },
+                    _ => {
+                        println!("No pay status?")
+                    },
+                }
+
+            },
+            _ => {
+                println!("No invoice?")
+            },
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+
+        let funds = cln_back
+            .call(Request::ListFunds(ListfundsRequest { spent: Some(false) }))
+            .await;
+
+        match funds {
+            Ok(Response::ListFunds(r)) => {
+                println!("Checking backend node funds {:?}", r.channels);
+            },
+            _ => {},
         }
     })
         .await;
