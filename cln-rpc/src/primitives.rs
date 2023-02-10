@@ -78,6 +78,14 @@ impl Amount {
     pub fn msat(&self) -> u64 {
         self.msat
     }
+
+    pub fn to_sat(self) -> u64 {
+        let sat = self.msat.checked_div(1000);
+        match sat {
+            Some(v) => v,
+            _ => 0,
+        }
+    }
 }
 
 impl std::ops::Add for Amount {
