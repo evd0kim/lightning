@@ -34,13 +34,11 @@ struct randpay {
 	struct pubkey fakenode;
 	/* We need to know current block height */
 	u32 blockheight;
-	/* Do we take over "pay" commands? */
-	bool take_over_pay;
 	/* Are we to wait for all parts to complete before returning? */
 	bool slow_mode;
 };
 
-static struct randpay *xpay_of(struct plugin *plugin)
+static struct randpay *randpay_of(struct plugin *plugin)
 {
 	return plugin_get_data(plugin, struct randpay);
 }
@@ -358,7 +356,7 @@ static struct amount_msat total_sent(const struct payment *payment)
 /* Should we finish command now? */
 static bool should_finish_command(const struct payment *payment)
 {
-	const struct randpay *randpay = xpay_of(payment->plugin);
+	const struct randpay *randpay = randpay_of(payment->plugin);
 
 	if (!randpay->slow_mode)
 		return true;
@@ -455,7 +453,7 @@ static void payment_give_up(struct command *aux_cmd,
 static const char *layer_of(const struct payment *payment,
 			    const struct short_channel_id_dir *scidd)
 {
-	struct gossmap *gossmap = get_gossmap(xpay_of(payment->plugin));
+	struct gossmap *gossmap = get_gossmap(randpay_of(payment->plugin));
 
 	if (gossmap_find_chan(gossmap, &scidd->scid))
 		return "randpay";
@@ -935,7 +933,7 @@ static const u8 *create_onion(const tal_t *ctx,
 			      struct attempt *attempt,
 			      u32 effective_bheight)
 {
-	struct randpay *randpay = xpay_of(attempt->payment->plugin);
+	struct randpay *randpay = randpay_of(attempt->payment->plugin);
 	bool blinded_path = false;
 	struct onionpacket *packet;
 	struct sphinx_path *sp;
@@ -996,7 +994,7 @@ static struct command_result *do_inject(struct command *aux_cmd,
 {
 	struct out_req *req;
 	const u8 *onion;
-	struct randpay *randpay = xpay_of(attempt->payment->plugin);
+	struct randpay *randpay = randpay_of(attempt->payment->plugin);
 	/* In case a block comes in, we give CLTVs an extra 1. */
 	u32 effective_bheight = randpay->blockheight + 1;
 
@@ -1217,7 +1215,7 @@ static struct command_result *getroutes_for(struct command *aux_cmd,
 					    struct payment *payment,
 					    struct amount_msat deliver)
 {
-	struct randpay *randpay = xpay_of(aux_cmd->plugin);
+	struct randpay *randpay = randpay_of(aux_cmd->plugin);
 	struct out_req *req;
 	const struct pubkey *dst;
 	struct amount_msat maxfee;
@@ -1342,7 +1340,7 @@ static void add_routehint(struct request_batch *batch,
 			  struct payment *payment,
 			  const struct route_info *route)
 {
-	struct randpay *randpay = xpay_of(payment->plugin);
+	struct randpay *randpay = randpay_of(payment->plugin);
 	struct amount_msat big_cap;
 	struct node_id me;
 
@@ -1391,7 +1389,7 @@ static char *add_blindedpath(const tal_t *ctx,
 			     const struct blinded_path *path,
 			     const struct blinded_payinfo *payinfo)
 {
-	struct randpay *randpay = xpay_of(payment->plugin);
+	struct randpay *randpay = randpay_of(payment->plugin);
 	struct amount_msat big_cap, per_route_reduction;
 	int badf;
 	struct short_channel_id scid;
@@ -1532,7 +1530,7 @@ preapproveinvoice_succeed(struct command *cmd,
 			  const jsmntok_t *result,
 			  struct payment *payment)
 {
-	struct randpay *randpay = xpay_of(cmd->plugin);
+	struct randpay *randpay = randpay_of(cmd->plugin);
 
 	/* Now we can conclude `check` command */
 	if (command_check_only(cmd)) {
@@ -1555,7 +1553,7 @@ static struct command_result *json_xpay_core(struct command *cmd,
 					     const jsmntok_t *params,
 					     bool as_pay)
 {
-	struct randpay *randpay = xpay_of(cmd->plugin);
+	struct randpay *randpay = randpay_of(cmd->plugin);
 	struct amount_msat *msat, *maxfee, *partial;
 	struct payment *payment = tal(cmd, struct payment);
 	unsigned int *retryfor;
@@ -1729,18 +1727,11 @@ static struct command_result *json_xpay_core(struct command *cmd,
 	return send_outreq(req);
 }
 
-static struct command_result *json_xpay(struct command *cmd,
+static struct command_result *json_randpay(struct command *cmd,
 					const char *buffer,
 					const jsmntok_t *params)
 {
 	return json_xpay_core(cmd, buffer, params, false);
-}
-
-static struct command_result *json_xpay_as_pay(struct command *cmd,
-					       const char *buffer,
-					       const jsmntok_t *params)
-{
-	return json_xpay_core(cmd, buffer, params, true);
 }
 
 static struct command_result *getchaininfo_done(struct command *aux_cmd,
@@ -1749,7 +1740,7 @@ static struct command_result *getchaininfo_done(struct command *aux_cmd,
 						const jsmntok_t *result,
 						void *unused)
 {
-	struct randpay *randpay = xpay_of(aux_cmd->plugin);
+	struct randpay *randpay = randpay_of(aux_cmd->plugin);
 
 	/* We use headercount from the backend, in case we're still syncing */
 	if (!json_to_u32(buf, json_get_member(buf, result, "headercount"),
@@ -1767,7 +1758,7 @@ static struct command_result *getinfo_done(struct command *aux_cmd,
 					   const jsmntok_t *result,
 					   void *unused)
 {
-	struct randpay *randpay = xpay_of(aux_cmd->plugin);
+	struct randpay *randpay = randpay_of(aux_cmd->plugin);
 	const char *err;
 
 	err = json_scan(tmpctx, buf, result,
@@ -1825,7 +1816,7 @@ static const char *init(struct command *init_cmd,
 			const char *buf UNUSED, const jsmntok_t *config UNUSED)
 {
 	struct plugin *plugin = init_cmd->plugin;
-	struct randpay *randpay = xpay_of(plugin);
+	struct randpay *randpay = randpay_of(plugin);
 	struct out_req *req;
 
 	randpay->global_gossmap = gossmap_load(randpay,
@@ -1867,11 +1858,7 @@ static const char *init(struct command *init_cmd,
 static const struct plugin_command commands[] = {
 	{
 		"randpay",
-		json_xpay,
-	},
-	{
-		"randpay-as-pay",
-		json_xpay_as_pay,
+		json_randpay,
 	},
 };
 
@@ -1879,7 +1866,7 @@ static struct command_result *handle_block_added(struct command *cmd,
 						 const char *buf,
 						 const jsmntok_t *params)
 {
-	struct randpay *randpay = xpay_of(cmd->plugin);
+	struct randpay *randpay = randpay_of(cmd->plugin);
 	u32 blockheight;
 	const char *err;
 
@@ -1992,7 +1979,7 @@ static struct command_result *handle_rpc_command(struct command *cmd,
 						 const char *buf,
 						 const jsmntok_t *params)
 {
-	struct randpay *randpay = xpay_of(cmd->plugin);
+	//struct randpay *randpay = randpay_of(cmd->plugin);
 	const jsmntok_t *rpc_tok, *method_tok, *params_tok, *id_tok,
 		*bolt11 = NULL, *amount_msat = NULL,
 		*partial_msat = NULL, *retry_for = NULL, *maxdelay = NULL;
@@ -2001,9 +1988,6 @@ static struct command_result *handle_rpc_command(struct command *cmd,
 
 	/* pay extra params */
 	const jsmntok_t *maxfeepercent = NULL, *exemptfee = NULL;
-
-	if (!randpay->take_over_pay)
-		goto dont_redirect;
 
 	rpc_tok = json_get_member(buf, params, "rpc_command");
 	method_tok = json_get_member(buf, rpc_tok, "method");
@@ -2083,12 +2067,10 @@ static struct command_result *handle_rpc_command(struct command *cmd,
 		goto dont_redirect;
 	}
 
-	plugin_log(cmd->plugin, LOG_INFORM, "Redirecting pay->randpay");
 	response = jsonrpc_stream_success(cmd);
 	json_object_start(response, "replace");
 	json_add_string(response, "jsonrpc", "2.0");
 	json_add_tok(response, "id", id_tok, buf);
-	json_add_string(response, "method", "randpay-as-pay");
 	json_object_start(response, "params");
 	json_add_tok(response, "invstring", bolt11, buf);
 	if (amount_msat)
@@ -2124,7 +2106,6 @@ int main(int argc, char *argv[])
 
 	setup_locale();
 	randpay = tal(NULL, struct randpay);
-	randpay->take_over_pay = false;
 	randpay->slow_mode = false;
 	plugin_main(argv, init, take(randpay),
 		    PLUGIN_RESTARTABLE, true, NULL,
@@ -2132,9 +2113,6 @@ int main(int argc, char *argv[])
 		    notifications, ARRAY_SIZE(notifications),
 		    hooks, ARRAY_SIZE(hooks),
 	            NULL, 0,
-		    plugin_option_dynamic("randpay-handle-pay", "bool",
-					  "Make randpay take over pay commands it can handle.",
-					  bool_option, bool_jsonfmt, &randpay->take_over_pay),
 		    plugin_option_dynamic("randpay-slow-mode", "bool",
 					  "Wait until all parts have completed before returning success or failure",
 					  bool_option, bool_jsonfmt, &randpay->slow_mode),
