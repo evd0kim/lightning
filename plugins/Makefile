@@ -120,6 +120,7 @@ C_PLUGINS :=					\
 	plugins/txprepare			\
 	plugins/cln-renepay			\
 	plugins/cln-xpay			\
+	plugins/cln-randpay			\
 	plugins/spenderp			\
 	plugins/cln-askrene
 
@@ -208,6 +209,7 @@ include plugins/askrene/Makefile
 include plugins/bkpr/Makefile
 include plugins/renepay/Makefile
 include plugins/xpay/Makefile
+include plugins/randpay/Makefile
 
 # Make sure these depend on everything.
 ALL_C_SOURCES += $(PLUGIN_ALL_SRC)
