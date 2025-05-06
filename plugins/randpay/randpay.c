@@ -51,36 +51,36 @@ static struct command_result *json_randpay_core(struct command *cmd,
 			 NULL))
 		return command_param_failed();
 
+	if (!randpay->global_gossmap) {
+		plugin_log(cmd->plugin, LOG_DBG, "gossip data in not ready yet");
+		return notification_handled(cmd);
+	}
 
 	if (destination) {
 		struct gossmap *gossmap = get_gossmap(randpay);
+		plugin_log(cmd->plugin, LOG_DBG, "looking for % in gossip data", destination);
 		struct gossmap_node *dst;
 		dst = gossmap_find_node(gossmap, destination);
 		if (dst) {
-			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
-					    "HERE");
+			struct json_stream *response;
+			response = jsonrpc_stream_success(cmd);
+			json_object_start(response, "replace");
+			json_add_string(response, "jsonrpc", "2.0");
+			json_add_string(response, "method", "keysend");
+			json_object_start(response, "params");
+			json_add_node_id(response, "destination", destination);
+			json_add_string(response, "amount_msat", "1000000"); /* Default 1000 sats */
+			json_object_end(response);
+			json_object_end(response);
+			return command_finished(cmd, response);
 		} else {
 			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
 					    "Destination must a public node");
-
 		}
 
-	} else {
-		return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
-				    "Random node");
 	}
 
-	struct json_stream *response;
-	response = jsonrpc_stream_success(cmd);
-	json_object_start(response, "replace");
-	json_add_string(response, "jsonrpc", "2.0");
-	json_add_string(response, "method", "keysend");
-	json_object_start(response, "params");
-	json_add_node_id(response, "destination", destination);
-	json_add_string(response, "amount_msat", "1000000"); /* Default 1000 sats */
-	json_object_end(response);
-	json_object_end(response);
-	return command_finished(cmd, response);
+	return command_fail(cmd, JSONRPC2_INVALID_PARAMS, "Random node flow is not implemented");
 }
 
 static struct command_result *json_randpay(struct command *cmd,
