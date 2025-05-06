@@ -58,10 +58,10 @@ static struct command_result *json_randpay_core(struct command *cmd,
 
 	if (destination) {
 		struct gossmap *gossmap = get_gossmap(randpay);
-		plugin_log(cmd->plugin, LOG_DBG, "looking for % in gossip data", destination);
 		struct gossmap_node *dst;
 		dst = gossmap_find_node(gossmap, destination);
 		if (dst) {
+			plugin_log(cmd->plugin, LOG_DBG, "found %s in gossip data", fmt_node_id(NULL, destination));
 			struct json_stream *response;
 			response = jsonrpc_stream_success(cmd);
 			json_object_start(response, "replace");
@@ -80,7 +80,36 @@ static struct command_result *json_randpay_core(struct command *cmd,
 
 	}
 
-	return command_fail(cmd, JSONRPC2_INVALID_PARAMS, "Random node flow is not implemented");
+	size_t num_nodes = gossmap_max_node_idx(randpay->global_gossmap);
+
+	if (num_nodes == 0) {
+		return command_fail(cmd, JSONRPC2_INVALID_PARAMS, "No nodes found in gossmap");
+	}
+
+	plugin_log(cmd->plugin, LOG_DBG, "selecting a random node among %lu nodes in gossip", num_nodes);
+
+	struct gossmap_node *node = gossmap_random_node(randpay->global_gossmap);
+
+	if (!node) {
+		return command_fail(cmd, JSONRPC2_INVALID_PARAMS, "Could not select a random node");
+	}
+
+	struct node_id rand_id;
+	gossmap_node_get_id(randpay->global_gossmap, node, &rand_id);
+
+	plugin_log(cmd->plugin, LOG_DBG, "trying random %s", fmt_node_id(NULL, &rand_id));
+
+	struct json_stream *response;
+	response = jsonrpc_stream_success(cmd);
+	json_object_start(response, "replace");
+	json_add_string(response, "jsonrpc", "2.0");
+	json_add_string(response, "method", "keysend");
+	json_object_start(response, "params");
+	json_add_node_id(response, "destination", &rand_id);
+	json_add_string(response, "amount_msat", "1000000"); /* Default 1000 sats */
+	json_object_end(response);
+	json_object_end(response);
+	return command_finished(cmd, response);
 }
 
 static struct command_result *json_randpay(struct command *cmd,
